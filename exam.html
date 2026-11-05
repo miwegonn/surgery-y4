@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Surgery Y4 · ข้อสอบเก่า</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="wrap">
+  <h1>ข้อสอบเก่าจริง</h1>
+  <p class="lead">MCQ ไฟล์แดง 240 ข้อ (2 ชุด), MCQ กอง 2-69 (MED51) 120 ข้อ และ MEQ 6 case · ทุกข้อมีแนวทางการคิดและคำอธิบาย</p>
+  <div class="tabs"><button class="pill on" data-m="mcq">📝 MCQ</button><button class="pill" data-m="meq">🧾 MEQ</button></div>
+
+  <section id="mcqView">
+    <div class="card filters">
+      <div class="row"><label for="src">ชุดข้อสอบ</label>
+        <select id="src"><option value="all">ทุกชุด</option><option value="red1">ไฟล์แดง ชุดที่ 1</option><option value="red2">ไฟล์แดง ชุดที่ 2</option><option value="m51">MCQ กอง 2-69 (MED51)</option></select>
+        <label><input type="checkbox" id="shuf"> สลับลำดับ</label>
+        <label><input type="checkbox" id="onlyWrong"> เฉพาะข้อที่เคยผิด</label>
+        <label><input type="checkbox" id="onlyNew"> เฉพาะข้อที่ยังไม่ทำ</label>
+        <label><input type="checkbox" id="onlyDiff"> เฉพาะข้อที่เฉลยในไฟล์ไม่ตรง</label>
+      </div>
+      <div class="chips" id="cats"></div>
+    </div>
+    <div class="card scorebar"><span>ชุดนี้</span><b id="sc">0/0</b><span class="muted" id="scp"></span><span style="flex:1"></span>
+      <button class="btn" id="toggleJump">เลือกข้อ</button><button class="btn" id="reset">ล้างผลชุดนี้</button></div>
+    <div class="card hidden" id="jumpBox" style="padding:12px 14px"><div class="jump" id="jump"></div></div>
+    <div id="qwrap"></div>
+    <div class="row between"><button class="btn" id="prev">← ข้อก่อนหน้า</button><button class="btn primary" id="next">ข้อถัดไป →</button></div>
+  </section>
+
+  <section id="meqView" class="hidden">
+    <p class="muted">MEQ สอบจริงเปิดทีละหน้า ย้อนกลับไม่ได้ — ลองเขียนคำตอบในกล่องก่อน แล้วกด "ดูแนวคำตอบ" แนวคำตอบเรียบเรียงจากเฉลยรุ่นพี่และหลักการรักษาปัจจุบัน</p>
+    <div class="chips" id="meqList" style="margin-bottom:10px"></div>
+    <div id="meqBox"></div>
+  </section>
+</main>
+<footer>ข้อสอบเป็น recall ของรุ่นพี่ · "เฉลยในไฟล์" = ไฮไลต์ในไฟล์เฉลยรุ่นพี่ (ไฟล์แดง edit / MED51 docx) · ข้อที่มีป้ายสีส้ม = เว็บนี้ตอบต่างจากเฉลยในไฟล์ พร้อมเหตุผล</footer>
+<script src="assets/common.js"></script>
+<script src="data/cats.js"></script>
+<script src="data/exam.js"></script>
+<script src="data/meq.js"></script>
+<script>
+SY4.header('exam');
+const SRC = {red1:'ไฟล์แดง ชุด 1', red2:'ไฟล์แดง ชุด 2', m51:'กอง 2-69 (MED51)'};
+const res = SY4.store.get('exam', {});
+const P = SY4.qs();
+let cat = P.get('cat') || 'all', list = [], idx = 0;
+const $ = id => document.getElementById(id);
+
+function renderCats(){
+  const base = EXAM.filter(q => $('src').value === 'all' || q.src === $('src').value);
+  const cs = [{id:'all', name:'ทุกหมวด', icon:'✦'}].concat(CATS.filter(c => base.some(q => q.cat === c.id)));
+  $('cats').innerHTML = cs.map(c => `<button class="pill ${c.id === cat ? 'on' : ''}" data-c="${c.id}">${c.icon} ${SY4.esc(c.name)} <span class="n">${c.id === 'all' ? base.length : base.filter(q => q.cat === c.id).length}</span></button>`).join('');
+}
+function build(keepPos){
+  const cid = keepPos && list[idx] ? list[idx].id : null;
+  list = EXAM.filter(q => ($('src').value === 'all' || q.src === $('src').value) && (cat === 'all' || q.cat === cat));
+  if ($('onlyWrong').checked) list = list.filter(q => res[q.id] && !res[q.id].c);
+  if ($('onlyNew').checked) list = list.filter(q => !res[q.id]);
+  if ($('onlyDiff').checked) list = list.filter(q => q.key !== q.ans);
+  if ($('shuf').checked) list = SY4.shuffle(list);
+  idx = cid ? Math.max(0, list.findIndex(q => q.id === cid)) : 0;
+  SY4.store.set('examFilter', {src: $('src').value, cat});
+  renderCats(); show();
+}
+function stats(){
+  const d = list.filter(q => res[q.id]), c = d.filter(q => res[q.id].c);
+  $('sc').textContent = `${c.length}/${d.length}`;
+  $('scp').textContent = `ถูก ${d.length ? Math.round(c.length / d.length * 100) : 0}% · ทำแล้ว ${d.length} จาก ${list.length} ข้อ`;
+  $('jump').innerHTML = list.map((q, i) => `<button class="${i === idx ? 'cur' : ''} ${res[q.id] ? (res[q.id].c ? 'c' : 'w') : ''}" data-i="${i}" title="${SRC[q.src]} ข้อ ${q.n}">${i + 1}</button>`).join('');
+}
+function show(){
+  stats();
+  const w = $('qwrap');
+  if (!list.length){ w.innerHTML = '<div class="card qcard">ไม่มีข้อที่ตรงกับตัวกรอง</div>'; return; }
+  const q = list[idx], c = SY4.cat(q.cat), r = res[q.id];
+  w.innerHTML = `<div class="card qcard">
+    <div class="qmeta"><span class="tag src">${SRC[q.src]} · ข้อ ${q.n}</span><span class="tag">${c.icon} ${SY4.esc(c.name)}</span><span class="muted" style="font-size:13px">ข้อที่ ${idx + 1}/${list.length}</span></div>
+    <div class="stem">${SY4.esc(q.stem)}</div>
+    ${q.imgs.length ? `<div class="qimgs">${q.imgs.map(s => `<img src="${s}" alt="ภาพประกอบโจทย์" loading="lazy">`).join('')}</div>` : ''}
+    <div class="opts">${q.opts.map(o => `<button class="opt" data-k="${o[0]}"><span class="k">${o[0]}</span><span>${SY4.esc(o[1])}</span></button>`).join('')}</div>
+    <div id="exp"></div></div>`;
+  w.querySelectorAll('.qimgs img').forEach(im => im.onclick = () => SY4.lightbox(im.src));
+  w.querySelectorAll('.opt').forEach(b => b.onclick = () => answer(q, b.dataset.k));
+  if (r) reveal(q, r.a);
+}
+function answer(q, k){ res[q.id] = {a: k, c: k === q.ans, t: Date.now()}; SY4.store.set('exam', res); reveal(q, k); stats(); }
+function reveal(q, k){
+  const ok = k === q.ans;
+  document.querySelectorAll('#qwrap .opt').forEach(x => {
+    x.disabled = true;
+    if (x.dataset.k === q.ans) x.classList.add('correct'); else if (x.dataset.k === k) x.classList.add('wrong');
+    if (q.key && q.key !== q.ans && x.dataset.k === q.key) x.classList.add('filekey');
+  });
+  const diff = q.key && q.key !== q.ans;
+  $('exp').innerHTML = `<div class="explain">
+    <div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? 'ถูกต้อง ✓' : 'ยังไม่ใช่ — คำตอบคือ ' + q.ans}</div>
+    ${diff ? `<p class="keynote">⚠ เฉลยในไฟล์รุ่นพี่ = <b>${q.key}</b> (กรอบเส้นประ) แต่เว็บนี้ตอบ <b>${q.ans}</b> ตามเหตุผลด้านล่าง</p>` : ''}
+    <h4>แนวทางการคิด</h4><p class="think">${SY4.esc(q.t)}</p>
+    <h4>คำอธิบาย</h4><p>${SY4.esc(q.e)}</p></div>`;
+}
+$('cats').onclick = e => { const b = e.target.closest('button'); if (!b) return; cat = b.dataset.c; build(); };
+['src', 'shuf', 'onlyWrong', 'onlyNew', 'onlyDiff'].forEach(id => $(id).onchange = () => build());
+$('next').onclick = () => { if (idx < list.length - 1){ idx++; show(); window.scrollTo({top: 0, behavior: 'smooth'}); } };
+$('prev').onclick = () => { if (idx > 0){ idx--; show(); window.scrollTo({top: 0, behavior: 'smooth'}); } };
+$('toggleJump').onclick = () => $('jumpBox').classList.toggle('hidden');
+$('jump').onclick = e => { const b = e.target.closest('button'); if (!b) return; idx = +b.dataset.i; show(); };
+$('reset').onclick = () => { if (!confirm('ล้างผลการทำข้อสอบของข้อในชุดที่กรองอยู่?')) return; list.forEach(q => delete res[q.id]); SY4.store.set('exam', res); show(); };
+document.addEventListener('keydown', e => {
+  if ($('mcqView').classList.contains('hidden') || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+  if (e.key === 'ArrowRight') $('next').click(); if (e.key === 'ArrowLeft') $('prev').click();
+  const k = e.key.toUpperCase(); const b = document.querySelector(`#qwrap .opt[data-k="${k}"]:not(:disabled)`); if (b) b.click();
+});
+const f = SY4.store.get('examFilter', null);
+if (f && !P.get('cat')){ $('src').value = f.src; cat = f.cat; }
+build();
+
+// ---- MEQ ----
+document.querySelectorAll('.tabs .pill').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs .pill').forEach(x => x.classList.toggle('on', x === b));
+  $('mcqView').classList.toggle('hidden', b.dataset.m !== 'mcq'); $('meqView').classList.toggle('hidden', b.dataset.m !== 'meq');
+});
+let mi = 0;
+$('meqList').innerHTML = MEQ.map((m, i) => `<button class="pill ${i === 0 ? 'on' : ''}" data-i="${i}">${SY4.cat(m.cat).icon} ${SY4.esc(m.title.replace('MEQ ', '').replace(/\s*\(.*\)/, ''))}</button>`).join('');
+$('meqList').onclick = e => { const b = e.target.closest('button'); if (!b) return; mi = +b.dataset.i; $('meqList').querySelectorAll('.pill').forEach(x => x.classList.toggle('on', x === b)); meqShow(); };
+function meqShow(){
+  const m = MEQ[mi]; let shown = 1;
+  const render = () => {
+    $('meqBox').innerHTML = `<div class="card qcard" style="margin-top:0"><h2 style="margin:0">${SY4.esc(m.title)}</h2><p class="muted" style="margin:4px 0 0">${SY4.esc(m.seen)}</p></div>` +
+      m.steps.slice(0, shown).map((s, si) => `<div class="card meq-step"><div class="meq-info">${s.info.map(p => `<p>${SY4.esc(p)}</p>`).join('')}</div>` +
+        s.qs.map((qq, qi) => `<div class="meq-q">${SY4.esc(qq.q)}</div><textarea placeholder="เขียนคำตอบของคุณ (ไม่บันทึก)"></textarea>
+          <button class="btn" data-a="${si}-${qi}" style="margin-top:6px">ดูแนวคำตอบ</button><div class="meq-a hidden" id="a${si}-${qi}">${SY4.esc(qq.a)}</div>`).join('') + `</div>`).join('') +
+      (shown < m.steps.length ? `<button class="btn primary" id="meqNext">หน้าถัดไป (เปิดข้อมูลเพิ่ม) →</button>` : `<p class="muted">จบ case</p>`);
+    $('meqBox').querySelectorAll('[data-a]').forEach(b => b.onclick = () => { $('a' + b.dataset.a).classList.toggle('hidden'); });
+    const n = $('meqNext'); if (n) n.onclick = () => { shown++; render(); };
+  };
+  render();
+}
+meqShow();
+</script>
+</body>
+</html>

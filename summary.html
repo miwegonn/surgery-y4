@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Surgery Y4 · สรุปเนื้อหา</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="wrap">
+  <h1>สรุปเนื้อหา</h1>
+  <p class="lead">สรุปจาก lecture ของภาควิชาและรายการโรค/ภาวะในคู่มือรายวิชา (หน้า 14–17) แยกตามหมวด · กดหัวข้อเพื่อเปิด</p>
+  <div class="row" style="margin-bottom:14px">
+    <input type="search" id="q" placeholder="ค้นหาในสรุป เช่น Alvarado, BI-RADS, hyperkalemia" style="flex:1;min-width:220px">
+  </div>
+  <div class="layout">
+    <aside class="card side" id="side"></aside>
+    <section>
+      <select class="catsel" id="catsel"></select>
+      <div id="content"></div>
+    </section>
+  </div>
+</main>
+<footer>บทเรียนละเอียดรายวันมาจากแผนอ่าน "Surgery Y4 — อ่านวันละเรื่อง" ซึ่งเขียนจากสไลด์ lecture ไฟล์รุ่นพี่ และข้อสอบเก่า</footer>
+<script src="assets/common.js"></script>
+<script src="data/cats.js"></script>
+<script src="data/summary.js"></script>
+<script src="data/lessons.js"></script>
+<script>
+SY4.header('summary');
+const side = document.getElementById('side'), content = document.getElementById('content'), catsel = document.getElementById('catsel'), qbox = document.getElementById('q');
+let cur = SY4.qs().get('cat') || SY4.store.get('sumCat', CATS[0].id);
+if (!SUMMARY[cur]) cur = CATS[0].id;
+
+side.innerHTML = CATS.map(c => `<a href="#" data-c="${c.id}"><span>${c.icon}</span>${SY4.esc(c.name)}</a>`).join('');
+catsel.innerHTML = CATS.map(c => `<option value="${c.id}">${c.icon} ${SY4.esc(c.name)}</option>`).join('');
+side.onclick = e => { const a = e.target.closest('a'); if (!a) return; e.preventDefault(); show(a.dataset.c); };
+catsel.onchange = () => show(catsel.value);
+
+function show(id){
+  cur = id; SY4.store.set('sumCat', id); qbox.value = '';
+  history.replaceState(null, '', '?cat=' + id);
+  side.querySelectorAll('a').forEach(a => a.classList.toggle('on', a.dataset.c === id));
+  catsel.value = id;
+  const c = SY4.cat(id), topics = SUMMARY[id] || [], ls = LESSONS.filter(l => l.cat === id);
+  content.innerHTML = `
+    <div class="card sec">
+      <div class="sec-head"><h2 style="margin:0">${c.icon} ${SY4.esc(c.name)}</h2>
+        <div class="row"><a class="btn" href="flashcards.html?cat=${id}">🃏 Flashcard</a><a class="btn primary" href="exam.html?cat=${id}">📝 ข้อสอบหมวดนี้</a></div></div>
+      <p class="muted" style="margin:6px 0 4px">${SY4.esc(c.desc)}</p>
+      ${topics.map((t, i) => `<details class="topic" ${i === 0 ? 'open' : ''}><summary>${SY4.esc(t.title)}</summary><div class="topic-body">${t.html}</div></details>`).join('')}
+    </div>
+    ${ls.length ? `<h3 style="margin:22px 0 8px">บทเรียนละเอียด (${ls.length})</h3>` + ls.map(l => `<details class="card topic lesson" data-l="${l.id}" style="margin-bottom:10px"><summary>${SY4.esc(l.title)}</summary><div class="topic-body lesson-body"></div></details>`).join('') : ''}`;
+  content.querySelectorAll('details.lesson').forEach(d => d.addEventListener('toggle', () => {
+    const b = d.querySelector('.lesson-body'); if (d.open && !b.innerHTML) b.innerHTML = LESSONS.find(l => l.id === d.dataset.l).html;
+  }));
+  window.scrollTo({top: 0});
+}
+
+// search across all categories
+qbox.addEventListener('input', () => {
+  const s = qbox.value.trim().toLowerCase();
+  if (s.length < 2) { show(cur); return; }
+  const hits = [];
+  CATS.forEach(c => (SUMMARY[c.id] || []).forEach(t => { if ((t.title + ' ' + t.html.replace(/<[^>]+>/g, ' ')).toLowerCase().includes(s)) hits.push([c, t]); }));
+  LESSONS.forEach(l => { if (l.html.replace(/<[^>]+>/g, ' ').toLowerCase().includes(s)) hits.push([SY4.cat(l.cat), {title: l.title, html: l.html, lesson: true}]); });
+  const re = new RegExp('(' + s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+  const mark = h => h.replace(/>([^<]+)</g, (m, t) => '>' + t.replace(re, '<mark>$1</mark>') + '<');
+  content.innerHTML = `<div class="card sec"><h2 style="margin:0 0 6px">ผลการค้นหา "${SY4.esc(qbox.value)}" · ${hits.length} หัวข้อ</h2>` +
+    hits.map(([c, t]) => `<details class="topic"><summary>${c.icon} ${SY4.esc(t.title)} <span class="tag">${SY4.esc(c.name)}${t.lesson ? ' · บทเรียน' : ''}</span></summary><div class="topic-body ${t.lesson ? 'lesson-body' : ''}">${mark('>' + t.html + '<').slice(1, -1)}</div></details>`).join('') + '</div>';
+});
+show(cur);
+</script>
+</body>
+</html>

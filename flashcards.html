@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Surgery Y4 · Flashcard & Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<main class="wrap">
+  <h1>Flashcard &amp; Quiz</h1>
+  <p class="lead">คำถามเน้น "ทำไม" และกลไก — ลองตอบในใจก่อนพลิกการ์ด · quiz เป็นโจทย์ concept ที่แต่งใหม่ (ข้อสอบเก่าจริงอยู่หน้า "ข้อสอบเก่า")</p>
+  <div class="tabs"><button class="pill on" data-t="flash">🃏 Flashcard</button><button class="pill" data-t="quiz">✅ Quiz</button></div>
+  <div class="chips" id="cats" style="margin-bottom:12px"></div>
+
+  <section id="flashView" class="flash-wrap">
+    <div class="row between"><span class="progress" id="fprog"></span>
+      <div class="row"><label class="muted" style="font-size:14px"><input type="checkbox" id="onlyUnknown"> เฉพาะใบที่ยังไม่จำ</label><button class="btn" id="fshuf">🔀 สลับ</button></div></div>
+    <div class="flash" id="flash" tabindex="0" role="button" aria-label="flip card">
+      <div class="flash-in"><div class="face front"><span class="lbl" id="fcat"></span><div class="txt" id="fq"></div><span class="muted" style="font-size:13px">แตะเพื่อดูคำตอบ</span></div>
+      <div class="face back"><span class="lbl">คำตอบ</span><div class="txt" id="fa"></div></div></div>
+    </div>
+    <div class="row between">
+      <button class="btn" id="fprev">← ก่อนหน้า</button>
+      <div class="row"><button class="btn" id="fno">ยังไม่จำ</button><button class="btn primary" id="fyes">จำได้แล้ว ✓</button></div>
+      <button class="btn" id="fnext">ถัดไป →</button>
+    </div>
+  </section>
+
+  <section id="quizView" class="flash-wrap hidden">
+    <div class="card scorebar"><span>คะแนน</span><b id="qscore">0/0</b><span class="muted" id="qprog"></span><span style="flex:1"></span><button class="btn" id="qrestart">เริ่มใหม่</button></div>
+    <div id="qbox"></div>
+  </section>
+</main>
+<script src="assets/common.js"></script>
+<script src="data/cats.js"></script>
+<script src="data/flash.js"></script>
+<script src="data/quiz.js"></script>
+<script>
+SY4.header('flash');
+let cat = SY4.qs().get('cat') || 'all', tab = 'flash';
+const known = SY4.store.get('known', {});
+const key = c => c.cat + '|' + c.q.slice(0, 40);
+const catsEl = document.getElementById('cats');
+function renderCats(){
+  const src = tab === 'flash' ? FLASH : QUIZ;
+  const list = [{id:'all', name:'ทุกหมวด', icon:'✦'}].concat(CATS.filter(c => src.some(x => x.cat === c.id)));
+  catsEl.innerHTML = list.map(c => `<button class="pill ${c.id === cat ? 'on' : ''}" data-c="${c.id}">${c.icon} ${SY4.esc(c.name)} <span class="n">${c.id === 'all' ? src.length : src.filter(x => x.cat === c.id).length}</span></button>`).join('');
+}
+catsEl.onclick = e => { const b = e.target.closest('button'); if (!b) return; cat = b.dataset.c; renderCats(); tab === 'flash' ? fStart() : qStart(); };
+document.querySelectorAll('.tabs .pill').forEach(b => b.onclick = () => {
+  tab = b.dataset.t; document.querySelectorAll('.tabs .pill').forEach(x => x.classList.toggle('on', x === b));
+  document.getElementById('flashView').classList.toggle('hidden', tab !== 'flash');
+  document.getElementById('quizView').classList.toggle('hidden', tab !== 'quiz');
+  if (cat !== 'all' && !(tab === 'flash' ? FLASH : QUIZ).some(x => x.cat === cat)) cat = 'all';
+  renderCats(); tab === 'flash' ? fStart() : qStart();
+});
+
+// ---- flashcards ----
+let deck = [], fi = 0;
+const flash = document.getElementById('flash');
+function fStart(shuffle){
+  deck = FLASH.filter(c => cat === 'all' || c.cat === cat);
+  if (document.getElementById('onlyUnknown').checked) deck = deck.filter(c => !known[key(c)]);
+  if (shuffle) deck = SY4.shuffle(deck);
+  fi = 0; fShow();
+}
+function fShow(){
+  flash.classList.remove('flip');
+  const p = document.getElementById('fprog');
+  const k = deck.filter(c => known[key(c)]).length;
+  if (!deck.length){ document.getElementById('fq').textContent = 'จำได้ครบทุกใบในหมวดนี้แล้ว 🎉'; document.getElementById('fa').textContent = ''; p.textContent = ''; return; }
+  const c = deck[fi];
+  setTimeout(() => {
+    document.getElementById('fcat').textContent = SY4.cat(c.cat).icon + ' ' + SY4.cat(c.cat).name + (known[key(c)] ? ' · ✓ จำแล้ว' : '');
+    document.getElementById('fq').textContent = c.q; document.getElementById('fa').textContent = c.a;
+  }, 120);
+  p.textContent = `ใบที่ ${fi + 1}/${deck.length} · จำแล้ว ${k}`;
+}
+flash.onclick = () => flash.classList.toggle('flip');
+flash.onkeydown = e => { if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); flash.classList.toggle('flip'); } };
+document.getElementById('fnext').onclick = () => { if (deck.length){ fi = (fi + 1) % deck.length; fShow(); } };
+document.getElementById('fprev').onclick = () => { if (deck.length){ fi = (fi - 1 + deck.length) % deck.length; fShow(); } };
+document.getElementById('fshuf').onclick = () => fStart(true);
+document.getElementById('onlyUnknown').onchange = () => fStart();
+document.getElementById('fyes').onclick = () => { if (!deck.length) return; known[key(deck[fi])] = 1; SY4.store.set('known', known); fi = (fi + 1) % deck.length; fShow(); };
+document.getElementById('fno').onclick = () => { if (!deck.length) return; delete known[key(deck[fi])]; SY4.store.set('known', known); fi = (fi + 1) % deck.length; fShow(); };
+document.addEventListener('keydown', e => { if (tab !== 'flash' || e.target.tagName === 'INPUT') return; if (e.key === 'ArrowRight') document.getElementById('fnext').click(); if (e.key === 'ArrowLeft') document.getElementById('fprev').click(); });
+
+// ---- quiz ----
+let qs = [], qi = 0, score = 0, answered = 0;
+function qStart(){ qs = SY4.shuffle(QUIZ.filter(q => cat === 'all' || q.cat === cat)); qi = 0; score = 0; answered = 0; qShow(); }
+function qShow(){
+  document.getElementById('qscore').textContent = `${score}/${answered}`;
+  document.getElementById('qprog').textContent = qs.length ? `ข้อ ${Math.min(qi + 1, qs.length)}/${qs.length}` : '';
+  const box = document.getElementById('qbox');
+  if (qi >= qs.length){ box.innerHTML = `<div class="card qcard"><h2 style="margin-top:0">จบชุดแล้ว — ได้ ${score}/${qs.length}</h2><button class="btn primary" onclick="qStart()">ทำอีกรอบ (สลับข้อ)</button></div>`; return; }
+  const q = qs[qi];
+  box.innerHTML = `<div class="card qcard"><div class="qmeta"><span class="tag">${SY4.cat(q.cat).icon} ${SY4.esc(SY4.cat(q.cat).name)}</span></div>
+    <div class="stem">${SY4.esc(q.q)}</div><div class="opts">${q.opts.map(o => `<button class="opt" data-k="${o[0]}"><span class="k">${o[0]}</span><span>${SY4.esc(o[1])}</span></button>`).join('')}</div><div id="qexp"></div></div>`;
+  box.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+    const ok = b.dataset.k === q.ans; answered++; if (ok) score++;
+    box.querySelectorAll('.opt').forEach(x => { x.disabled = true; if (x.dataset.k === q.ans) x.classList.add('correct'); else if (x === b) x.classList.add('wrong'); });
+    document.getElementById('qexp').innerHTML = `<div class="explain"><div class="verdict ${ok ? 'ok' : 'bad'}">${ok ? 'ถูกต้อง ✓' : 'ยังไม่ใช่ — คำตอบคือ ' + q.ans}</div><p>${SY4.esc(q.e)}</p><button class="btn primary" id="qnext">ข้อต่อไป →</button></div>`;
+    document.getElementById('qscore').textContent = `${score}/${answered}`;
+    document.getElementById('qnext').onclick = () => { qi++; qShow(); };
+  });
+}
+document.getElementById('qrestart').onclick = qStart;
+renderCats(); fStart();
+</script>
+</body>
+</html>
