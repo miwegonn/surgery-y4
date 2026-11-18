@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
+<script src="assets/gate.js"></script>
 </head>
 <body>
 <main class="wrap">
@@ -15,6 +16,7 @@
   <div class="tabs"><button class="pill on" data-m="mcq">📝 MCQ</button><button class="pill" data-m="meq">🧾 MEQ</button></div>
 
   <section id="mcqView">
+    <div class="topicbar hidden" id="topicBar"></div>
     <div class="card filters">
       <div class="row"><label for="src">ชุดข้อสอบ</label>
         <select id="src"><option value="all">ทุกชุด</option><option value="red1">ไฟล์แดง ชุดที่ 1</option><option value="red2">ไฟล์แดง ชุดที่ 2</option><option value="m51">MCQ กอง 2-69 (MED51)</option></select>
@@ -43,6 +45,7 @@
 <script src="data/cats.js"></script>
 <script src="data/exam.js"></script>
 <script src="data/meq.js"></script>
+<script src="data/topics.js"></script>
 <script>
 SY4.header('exam');
 const SRC = {red1:'ไฟล์แดง ชุด 1', red2:'ไฟล์แดง ชุด 2', m51:'กอง 2-69 (MED51)'};
@@ -50,15 +53,24 @@ const res = SY4.store.get('exam', {});
 const P = SY4.qs();
 let cat = P.get('cat') || 'all', list = [], idx = 0;
 const $ = id => document.getElementById(id);
+let topicIds = null;
+if (P.get('tp') && TOPICS.t[P.get('tp')]) { topicIds = new Set(TOPICS.t[P.get('tp')]); cat = 'all'; }
+function renderTopicBar(){
+  const tb = $('topicBar');
+  if (!topicIds) { tb.classList.add('hidden'); return; }
+  tb.classList.remove('hidden');
+  tb.innerHTML = `<span>📌 ข้อสอบเรื่อง <b>${SY4.esc(P.get('tt') || '')}</b> · ${topicIds.size} ข้อ</span><span style="flex:1"></span><a class="btn sm" href="javascript:history.back()">← กลับไปสรุป</a><button class="btn sm" id="clearTopic">ดูข้อสอบทั้งหมด</button>`;
+  $('clearTopic').onclick = () => { topicIds = null; history.replaceState(null, '', 'exam.html'); renderTopicBar(); renderCats(); build(); };
+}
 
 function renderCats(){
-  const base = EXAM.filter(q => $('src').value === 'all' || q.src === $('src').value);
+  const base = EXAM.filter(q => ($('src').value === 'all' || q.src === $('src').value) && (!topicIds || topicIds.has(q.id)));
   const cs = [{id:'all', name:'ทุกหมวด', icon:'✦'}].concat(CATS.filter(c => base.some(q => q.cat === c.id)));
   $('cats').innerHTML = cs.map(c => `<button class="pill ${c.id === cat ? 'on' : ''}" data-c="${c.id}">${c.icon} ${SY4.esc(c.name)} <span class="n">${c.id === 'all' ? base.length : base.filter(q => q.cat === c.id).length}</span></button>`).join('');
 }
 function build(keepPos){
   const cid = keepPos && list[idx] ? list[idx].id : null;
-  list = EXAM.filter(q => ($('src').value === 'all' || q.src === $('src').value) && (cat === 'all' || q.cat === cat));
+  list = EXAM.filter(q => ($('src').value === 'all' || q.src === $('src').value) && (cat === 'all' || q.cat === cat) && (!topicIds || topicIds.has(q.id)));
   if ($('onlyWrong').checked) list = list.filter(q => res[q.id] && !res[q.id].c);
   if ($('onlyNew').checked) list = list.filter(q => !res[q.id]);
   if ($('onlyDiff').checked) list = list.filter(q => q.key !== q.ans);
@@ -116,8 +128,8 @@ document.addEventListener('keydown', e => {
   const k = e.key.toUpperCase(); const b = document.querySelector(`#qwrap .opt[data-k="${k}"]:not(:disabled)`); if (b) b.click();
 });
 const f = SY4.store.get('examFilter', null);
-if (f && !P.get('cat')){ $('src').value = f.src; cat = f.cat; }
-build();
+if (f && !P.get('cat') && !topicIds){ $('src').value = f.src; cat = f.cat; }
+renderTopicBar(); build();
 
 // ---- MEQ ----
 document.querySelectorAll('.tabs .pill').forEach(b => b.onclick = () => {
