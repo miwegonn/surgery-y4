@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Surgery Y4 · ผังตัดสินใจ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/gate.js"></script>
+</head>
+<body>
+<main class="wrap">
+  <h1>ผังตัดสินใจ</h1>
+  <p class="lead">Clinical flowchart ของเรื่องที่ออกสอบบ่อย — ไล่จากอาการ → การตรวจ → การตัดสินใจรักษา · คลิกกล่องเพื่อดูรายละเอียด red flag และจุดหลอก</p>
+  <div class="legend"><span><b style="color:var(--ok)">▌</b> ไม่เร่งด่วน/benign</span><span><b style="color:var(--accent)">▌</b> ขั้นหลัก</span><span><b style="color:var(--warn)">▌</b> ต้องระวัง</span><span><b style="color:var(--bad)">▌</b> อันตราย/เร่งด่วน</span><span>🚩 Red flag · ⚠️ Pitfall · 💡 Pearl</span></div>
+  <select class="catsel" id="fsel"></select>
+  <div class="layout">
+    <aside class="card side" id="side"></aside>
+    <section><div class="card sec" id="box"></div></section>
+  </div>
+</main>
+<script src="assets/common.js"></script>
+<script src="data/cats.js"></script>
+<script src="data/flows.js"></script>
+<script src="assets/flow.js"></script>
+<script>
+SY4.header('flows');
+const side = document.getElementById('side'), box = document.getElementById('box'), fsel = document.getElementById('fsel');
+const byCat = CATS.map(c => [c, FLOWS.filter(f => f.cat === c.id)]).filter(x => x[1].length);
+side.innerHTML = byCat.map(([c, fs]) => `<div class="muted" style="font-size:12.5px;margin:10px 8px 2px">${c.icon} ${SY4.esc(c.name)}</div>` + fs.map(f => `<a href="#" data-f="${f.id}">${SY4.esc(f.title.split(':')[0])}</a>`).join('')).join('');
+fsel.innerHTML = byCat.map(([c, fs]) => `<optgroup label="${SY4.esc(c.icon + ' ' + c.name)}">` + fs.map(f => `<option value="${f.id}">${SY4.esc(f.title)}</option>`).join('') + '</optgroup>').join('');
+function show(id){
+  const f = FLOWS.find(x => x.id === id) || FLOWS[0];
+  SY4.store.set('flowCur', f.id); history.replaceState(null, '', '?f=' + f.id);
+  side.querySelectorAll('a').forEach(a => a.classList.toggle('on', a.dataset.f === f.id)); fsel.value = f.id;
+  const c = SY4.cat(f.cat);
+  box.innerHTML = `<div class="sec-head"><h2 style="margin:0">${SY4.esc(f.title)}</h2><div class="row"><a class="btn" href="summary.html?cat=${f.cat}">📚 สรุป ${c.icon} ${SY4.esc(c.name)}</a></div></div><div id="fl" style="margin-top:10px"></div>`;
+  SY4.flow(document.getElementById('fl'), f);
+  window.scrollTo({top: 0});
+}
+side.onclick = e => { const a = e.target.closest('a'); if (!a) return; e.preventDefault(); show(a.dataset.f); };
+fsel.onchange = () => show(fsel.value);
+show(SY4.qs().get('f') || SY4.store.get('flowCur', FLOWS[0].id));
+</script>
+</body>
+</html>

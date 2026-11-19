@@ -31,11 +31,27 @@
 <script src="data/summary.js"></script>
 <script src="data/lessons.js"></script>
 <script src="data/topics.js"></script>
+<script src="data/flows.js"></script>
+<script src="assets/flow.js"></script>
 <script>
 SY4.header('summary');
 const side = document.getElementById('side'), content = document.getElementById('content'), catsel = document.getElementById('catsel'), qbox = document.getElementById('q');
 const NS = TOPICS.nsets;
 let hotOnly = SY4.store.get('sumHot', false) === true;
+let hyMode = SY4.store.get('sumHY', false) === true;
+const FL = {}; FLOWS.forEach(f => FL[f.id] = f);
+function flowBox(fid){ const f = FL[fid]; return `<details class="flowwrap" open><summary>🧭 ผังตัดสินใจ: ${SY4.esc(f.title)} <small>· คลิกกล่องเพื่อดูรายละเอียด</small></summary><div data-f="${fid}"></div></details>`; }
+function renderFlows(root){ root.querySelectorAll('[data-f]').forEach(d => { if (!d.dataset.done) { d.dataset.done = 1; SY4.flow(d, FL[d.dataset.f]); } }); }
+function applyHY(root){
+  root.querySelectorAll('.topic-body').forEach(b => {
+    b.querySelectorAll('.hy-hide').forEach(e => e.classList.remove('hy-hide'));
+    if (!hyMode || b.classList.contains('lesson-body')) return;
+    const keep = el => /🔥/.test(el.textContent) || el.querySelector('mark.trap, .co');
+    b.querySelectorAll('li').forEach(li => { if (!li.closest('.flow') && !keep(li)) li.classList.add('hy-hide'); });
+    [...b.children].forEach(el => { if (el.matches('p, h3, h4') && !keep(el)) el.classList.add('hy-hide'); });
+    b.querySelectorAll('ul, ol').forEach(u => { if (!u.closest('.flow') && ![...u.children].some(li => !li.classList.contains('hy-hide'))) u.classList.add('hy-hide'); });
+  });
+}
 function freq(t){ return {m: t.n || 0, nq: t.nq || 0}; }
 function badge(m){
   if (m >= 10) return `<span class="hy hot" title="มีเรื่องนี้ใน ${m} จาก ${NS} ชุดข้อสอบ">🔥 ออก ${m}/${NS} ชุด</span>`;
@@ -46,7 +62,8 @@ function badge(m){
 function topicHTML(t, open, extra, cid, i){
   const f = freq(t);
   const tools = f.nq ? `<div class="topic-tools"><a class="btn sm primary" href="exam.html?tp=${encodeURIComponent(cid + '|' + i)}&tt=${encodeURIComponent(t.title)}">📝 ทำข้อสอบเรื่องนี้ (${f.nq} ข้อ)</a></div>` : '';
-  return `<details class="topic" ${open ? 'open' : ''}><summary><span class="tt">${SY4.esc(t.title)}${extra || ''}</span>${badge(f.m)}</summary><div class="topic-body">${tools}${t.html}</div></details>`;
+  const fl = (t.flow || []).map(flowBox).join('');
+  return `<details class="topic" data-i="${i}" ${open ? 'open' : ''}><summary><span class="tt">${SY4.esc(t.title)}${extra || ''}</span>${badge(f.m)}</summary><div class="topic-body">${tools}${fl}${t.html}</div></details>`;
 }
 let cur = SY4.qs().get('cat') || SY4.store.get('sumCat', CATS[0].id);
 if (!SUMMARY[cur]) cur = CATS[0].id;
@@ -67,12 +84,17 @@ function show(id){
       <div class="sec-head"><h2 style="margin:0">${c.icon} ${SY4.esc(c.name)}</h2>
         <div class="row"><a class="btn" href="flashcards.html?cat=${id}">🃏 Flashcard</a><a class="btn primary" href="exam.html?cat=${id}">📝 ข้อสอบหมวดนี้</a></div></div>
       <p class="muted" style="margin:6px 0 4px">${SY4.esc(c.desc)}</p>
-      <div class="toolbar"><label><input type="checkbox" id="hot" ${hotOnly ? 'checked' : ''}> แสดงเฉพาะหัวข้อ 🔥 ออกบ่อย</label>
+      ${FLOWS.some(f => f.cat === id) ? `<div class="flowchips">🧭 ผังตัดสินใจในหมวดนี้: ${FLOWS.filter(f => f.cat === id).map(f => `<a href="#" data-goto="${f.ti}">${SY4.esc(f.title.split(':')[0])}</a>`).join('')}</div>` : ''}
+      <div class="toolbar"><label><input type="checkbox" id="hymode" ${hyMode ? 'checked' : ''}> ⚡ โหมดเตรียมสอบ (เหลือเฉพาะ 🔥 จุดหลอก และกล่องเตือน)</label>
+        <label><input type="checkbox" id="hot" ${hotOnly ? 'checked' : ''}> แสดงเฉพาะหัวข้อ 🔥 ออกบ่อย</label>
         <button class="btn sm" id="openall">เปิดทั้งหมด</button><button class="btn sm" id="closeall">ปิดทั้งหมด</button></div>
       ${topics.map((t, i) => [t, i]).filter(([t]) => !hotOnly || freq(t).m >= 10).map(([t, i], j) => topicHTML(t, j === 0, '', id, i)).join('') || '<p class="muted">หมวดนี้ไม่มีหัวข้อ 🔥 — ยกเลิกตัวกรองเพื่อดูทั้งหมด</p>'}
     </div>
     ${ls.length ? `<h3 style="margin:22px 0 8px">บทเรียนละเอียด (${ls.length})</h3>` + ls.map(l => `<details class="card topic lesson" data-l="${l.id}" style="margin-bottom:10px"><summary>${SY4.esc(l.title)}</summary><div class="topic-body lesson-body"></div></details>`).join('') : ''}`;
   document.getElementById('hot').onchange = e => { hotOnly = e.target.checked; SY4.store.set('sumHot', hotOnly); show(cur); };
+  document.getElementById('hymode').onchange = e => { hyMode = e.target.checked; SY4.store.set('sumHY', hyMode); applyHY(content); };
+  content.querySelectorAll('[data-goto]').forEach(a => a.onclick = ev => { ev.preventDefault(); let d = content.querySelector(`.sec details.topic[data-i="${a.dataset.goto}"]`); if (!d && hotOnly) { hotOnly = false; SY4.store.set('sumHot', false); show(cur); d = content.querySelector(`.sec details.topic[data-i="${a.dataset.goto}"]`); } if (d) { d.open = true; d.scrollIntoView({behavior: 'smooth', block: 'start'}); } });
+  renderFlows(content); applyHY(content);
   document.getElementById('openall').onclick = () => content.querySelectorAll('.sec details.topic').forEach(d => d.open = true);
   document.getElementById('closeall').onclick = () => content.querySelectorAll('.sec details.topic').forEach(d => d.open = false);
   content.querySelectorAll('details.lesson').forEach(d => d.addEventListener('toggle', () => {
@@ -93,7 +115,7 @@ qbox.addEventListener('input', () => {
   content.innerHTML = `<div class="card sec"><h2 style="margin:0 0 6px">ผลการค้นหา "${SY4.esc(qbox.value)}" · ${hits.length} หัวข้อ</h2>` +
     hits.map(([c, t, i]) => t.lesson
       ? `<details class="topic"><summary><span class="tt">${c.icon} ${SY4.esc(t.title)} <span class="tag">${SY4.esc(c.name)} · บทเรียน</span></span></summary><div class="topic-body lesson-body">${mark('>' + t.html + '<').slice(1, -1)}</div></details>`
-      : topicHTML(Object.assign({}, t, {html: mark('>' + t.html + '<').slice(1, -1)}), false, ` <span class="tag">${c.icon} ${SY4.esc(c.name)}</span>`, c.id, i)).join('') + '</div>';
+      : topicHTML(Object.assign({}, t, {flow: [], html: mark('>' + t.html + '<').slice(1, -1)}), false, ` <span class="tag">${c.icon} ${SY4.esc(c.name)}</span>`, c.id, i)).join('') + '</div>';
 });
 show(cur);
 </script>

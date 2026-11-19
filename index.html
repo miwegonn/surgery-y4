@@ -20,6 +20,7 @@
 
   <div class="grid3">
     <a class="card feature" href="summary.html"><span class="ic">📚</span><h2>สรุปเนื้อหา</h2><p>Lecture + โรคที่ต้องรู้ แยกตามหมวด พร้อมบทเรียนละเอียดรายวัน</p><span class="stat" id="st-sum"></span></a>
+    <a class="card feature" href="flows.html"><span class="ic">🧭</span><h2>ผังตัดสินใจ</h2><p>Clinical flowchart แบบคลิกได้ ทีละขั้นจากอาการถึงการรักษา พร้อม red flag และจุดหลอก</p><span class="stat" id="st-fl"></span></a>
     <a class="card feature" href="flashcards.html"><span class="ic">🃏</span><h2>Flashcard &amp; Quiz</h2><p>คำถาม "ทำไม" เน้นกลไก และ quiz แนว concept</p><span class="stat" id="st-fc"></span></a>
     <a class="card feature" href="exam.html"><span class="ic">📝</span><h2>ข้อสอบเก่าจริง</h2><p>MCQ ไฟล์แดง 240 ข้อ + MCQ กอง 2-69 + MEQ พร้อมคำอธิบายและแนวทางคิด</p><span class="stat" id="st-ex"></span></a>
   </div>
@@ -34,6 +35,7 @@
 <script src="data/summary.js"></script>
 <script src="data/flash.js"></script>
 <script src="data/quiz.js"></script>
+<script src="data/flows.js"></script>
 <script src="data/exam.js"></script>
 <script src="data/meq.js"></script>
 <script>
@@ -41,6 +43,7 @@ SY4.header('home');
 const done = SY4.store.get('exam', {});
 const topics = Object.values(SUMMARY).reduce((a, t) => a + t.length, 0);
 document.getElementById('st-sum').textContent = `${CATS.length} หมวด · ${topics} หัวข้อ · บทเรียนละเอียด 20 วัน`;
+document.getElementById('st-fl').textContent = `${FLOWS.length} ผัง · ${FLOWS.reduce((a, f) => a + f.steps.reduce((b, s) => b + s.nodes.length, 0), 0)} กล่อง`;
 document.getElementById('st-fc').textContent = `${FLASH.length} flashcards · ${QUIZ.length} quiz`;
 document.getElementById('st-ex').textContent = `${EXAM.length} MCQ · ${MEQ.length} MEQ cases · ทำแล้ว ${Object.keys(done).length} ข้อ`;
 document.getElementById('cats').innerHTML = CATS.map(c => {
