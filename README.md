@@ -4,6 +4,6 @@
 
 - `summary.html` สรุปเนื้อหา (lecture + โรคที่ต้องรู้) + บทเรียนละเอียดรายวัน
 - `flashcards.html` Flashcard & Quiz เน้นความเข้าใจ
-- `exam.html` ข้อสอบเก่า MCQ ไฟล์แดง 240 ข้อ, MCQ กอง 2-69 (MED51) 120 ข้อ และ MEQ 6 case พร้อมแนวคิดและคำอธิบาย
+- `exam.html` ข้อสอบเก่า MCQ และ MEQ พร้อมแนวคิดและคำอธิบาย
 
 เปิดผ่าน GitHub Pages: Settings → Pages → Deploy from a branch → `main` / root
