@@ -22,7 +22,7 @@
   window.SY4.shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
   window.SY4.header = function(active){
-    const links = [['index.html','หน้าแรก','home'],['summary.html','สรุปเนื้อหา','summary'],['flows.html','ผังตัดสินใจ','flows'],['flashcards.html','Flashcard & Quiz','flash'],['exam.html','ข้อสอบเก่า','exam']];
+    const links = [['index.html','หน้าแรก','home'],['summary.html','สรุปเนื้อหา','summary'],['flows.html','ผังตัดสินใจ','flows'],['flashcards.html','Flashcard & Quiz','flash'],['exam.html','ข้อสอบเก่า','exam'],['crt-abdominal-mass.html','CRT','crt']];
     const el = document.createElement('header');
     el.className = 'topbar';
     el.innerHTML = '<div class="topbar-in"><a class="brand" href="index.html"><span class="logo">Sx</span><span>Surgery Y4<span class="full"> · PSU</span></span></a>' +
