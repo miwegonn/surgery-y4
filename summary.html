@@ -13,7 +13,7 @@
 <main class="wrap">
   <h1>สรุปเนื้อหา</h1>
   <p class="lead">สรุปจาก lecture ของภาควิชา รายการโรค/ภาวะในคู่มือรายวิชา และข้อสอบเก่า แยกตามหมวด · กดหัวข้อเพื่อเปิด</p>
-  <div class="legend"><span><b>🔥</b> ออกบ่อยมาก</span><span><b>★</b> เคยออก</span><span><mark class="trap">ไฮไลต์เหลือง</mark> จุดที่ข้อสอบชอบหลอก</span><span>ป้ายขวาของหัวข้อ = จำนวนชุดข้อสอบเก่า (จาก 27 ชุด MCQ Med38–50) ที่มีเรื่องนั้น</span></div>
+  <div class="legend"><span><b>🔥</b> ออกบ่อยมาก</span><span><b>★</b> เคยออก</span><span><mark class="trap">ไฮไลต์เหลือง</mark> จุดที่ข้อสอบชอบหลอก</span><span><b>📗</b> เพิ่ม/รีเช็คจาก CDT Surgery 16e</span><span><b>📒</b> โน้ตรุ่นพี่: <b>🧠</b> วิธีจำ · <b>🎯</b> คำถามที่โดนซอย · <b>✏️</b> จุดที่แก้ให้ถูก</span><span>ป้ายขวาของหัวข้อ = จำนวนชุดข้อสอบเก่า (จาก 27 ชุด MCQ Med38–50) ที่มีเรื่องนั้น</span></div>
   <div class="row" style="margin-bottom:14px">
     <input type="search" id="q" placeholder="ค้นหาในสรุป เช่น Alvarado, BI-RADS, hyperkalemia" style="flex:1;min-width:220px">
   </div>
@@ -46,7 +46,7 @@ function applyHY(root){
   root.querySelectorAll('.topic-body').forEach(b => {
     b.querySelectorAll('.hy-hide').forEach(e => e.classList.remove('hy-hide'));
     if (!hyMode || b.classList.contains('lesson-body')) return;
-    const keep = el => /🔥/.test(el.textContent) || el.querySelector('mark.trap, .co');
+    const keep = el => /🔥|🧠|🎯/.test(el.textContent) || el.querySelector('mark.trap, .co');
     b.querySelectorAll('li').forEach(li => { if (!li.closest('.flow') && !keep(li)) li.classList.add('hy-hide'); });
     [...b.children].forEach(el => { if (el.matches('p, h3, h4') && !keep(el)) el.classList.add('hy-hide'); });
     b.querySelectorAll('ul, ol').forEach(u => { if (!u.closest('.flow') && ![...u.children].some(li => !li.classList.contains('hy-hide'))) u.classList.add('hy-hide'); });
@@ -85,7 +85,7 @@ function show(id){
         <div class="row"><a class="btn" href="flashcards.html?cat=${id}">🃏 Flashcard</a><a class="btn primary" href="exam.html?cat=${id}">📝 ข้อสอบหมวดนี้</a></div></div>
       <p class="muted" style="margin:6px 0 4px">${SY4.esc(c.desc)}</p>
       ${FLOWS.some(f => f.cat === id) ? `<div class="flowchips">🧭 ผังตัดสินใจในหมวดนี้: ${FLOWS.filter(f => f.cat === id).map(f => `<a href="#" data-goto="${f.ti}">${SY4.esc(f.title.split(':')[0])}</a>`).join('')}</div>` : ''}
-      <div class="toolbar"><label><input type="checkbox" id="hymode" ${hyMode ? 'checked' : ''}> ⚡ โหมดเตรียมสอบ (เหลือเฉพาะ 🔥 จุดหลอก และกล่องเตือน)</label>
+      <div class="toolbar"><label><input type="checkbox" id="hymode" ${hyMode ? 'checked' : ''}> ⚡ โหมดเตรียมสอบ (เหลือเฉพาะ 🔥 จุดหลอก กล่องเตือน 🧠 วิธีจำ และ 🎯 คำถามที่โดนซอย)</label>
         <label><input type="checkbox" id="hot" ${hotOnly ? 'checked' : ''}> แสดงเฉพาะหัวข้อ 🔥 ออกบ่อย</label>
         <button class="btn sm" id="openall">เปิดทั้งหมด</button><button class="btn sm" id="closeall">ปิดทั้งหมด</button></div>
       ${topics.map((t, i) => [t, i]).filter(([t]) => !hotOnly || freq(t).m >= 10).map(([t, i], j) => topicHTML(t, j === 0, '', id, i)).join('') || '<p class="muted">หมวดนี้ไม่มีหัวข้อ 🔥 — ยกเลิกตัวกรองเพื่อดูทั้งหมด</p>'}
